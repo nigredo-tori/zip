@@ -52,11 +52,14 @@ when defined(unix) and not defined(useLibzipSrc):
     {.pragma: mydll, dynlib: "libzip(|2|4).dylib".}
   else:
     {.pragma: mydll, dynlib: "libzip(|2).so(|.2|.1|.0)".}
-else:
+elif defined(useLibzipSrc):
   when defined(unix):
     {.passl: "-lz".}
   {.compile: "zip/private/libzip_all.c".}
   {.pragma: mydll.}
+else:
+  # Will have to pass DLLs manually, via `--passL`
+  {.pragma:mydll, header:"<zip.h>".}
 
 type
   ZipSourceCmd* = int32
@@ -64,7 +67,7 @@ type
   ZipSourceCallback* = proc (state: pointer, data: pointer, length: int,
                               cmd: ZipSourceCmd): int {.cdecl.}
   PZipStat* = ptr ZipStat
-  ZipStat* = object           ## the 'zip_stat' struct
+  ZipStat* {.importc: "zip_stat_t", myDll.} = object           ## the 'zip_stat' struct
     name*: cstring            ## name of the file
     index*: int32             ## index within archive
     crc*: int32               ## crc of file data
@@ -74,12 +77,12 @@ type
     compMethod*: int16        ## compression method used
     encryptionMethod*: int16  ## encryption method used
 
-  Zip = object
-  ZipSource = object
-  ZipFile = object
+  Zip {.importc: "zip_t", myDll.} = object
+  ZipSource {.importc: "zip_source_t", myDll.} = object
+  ZipFile {.importc: "zip_file_t", myDll.} = object
 
-  PZip* = ptr Zip ## represents a zip archive
-  PZipFile* = ptr ZipFile ## represents a file within an archive
+  PZip* = pointer ## represents a zip archive
+  PZipFile* = pointer ## represents a file within an archive
   PZipSource* = ptr ZipSource ## represents a source for an archive
 {.deprecated: [TZipSourceCmd: ZipSourceCmd, TZipStat: ZipStat, TZip: Zip,
               TZipSourceCallback: ZipSourceCallback, TZipSource: ZipSource,
@@ -173,7 +176,7 @@ proc zip_add*(para1: PZip, para2: cstring, para3: PZipSource): int32 {.cdecl,
     importc: "zip_add", mydll.}
 proc zip_add_dir*(para1: PZip, para2: cstring): int32 {.cdecl,
     importc: "zip_add_dir", mydll.}
-proc zip_close*(para1: PZip) {.cdecl, importc: "zip_close", mydll.}
+proc zip_close*(para1: PZip): int32 {.cdecl, importc: "zip_close", mydll.}
 proc zip_delete*(para1: PZip, para2: int32): int32 {.cdecl, mydll,
     importc: "zip_delete".}
 proc zip_error_clear*(para1: PZip) {.cdecl, importc: "zip_error_clear", mydll.}

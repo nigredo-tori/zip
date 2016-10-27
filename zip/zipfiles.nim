@@ -10,7 +10,7 @@
 ## This module implements a zip archive creator/reader/modifier.
 
 import
-  streams, libzip, times, os, strutils
+  streams, ./libzip, times, os, strutils
 
 type
   ZipArchive* = object of RootObj ## represents a zip archive
@@ -21,7 +21,13 @@ type
 proc zipError(z: var ZipArchive) =
   var e: ref IOError
   new(e)
-  e.msg = $zip_strerror(z.w)
+  e.msg = "libzip: " & $zip_strerror(z.w)
+  raise e
+
+proc zipError(code: int32) =
+  var e: ref IOError
+  new(e)
+  e.msg = "libzip error: " & $code
   raise e
 
 proc open*(z: var ZipArchive, filename: string, mode: FileMode = fmRead): bool =
@@ -35,12 +41,15 @@ proc open*(z: var ZipArchive, filename: string, mode: FileMode = fmRead): bool =
     flags = ZIP_CREATE or ZIP_EXCL
   of fmReadWrite: flags = ZIP_CREATE
   z.w = zip_open(filename, flags, addr(err))
+  if z.w.isNil:
+    zipError(err)
   z.mode = mode
   result = z.w != nil
 
 proc close*(z: var ZipArchive) =
   ## Closes a zip file.
-  zip_close(z.w)
+  if zip_close(z.w) < 0'i32:
+    zipError(z)
 
 proc createDir*(z: var ZipArchive, dir: string) =
   ## Creates a directory within the `z` archive. This does not fail if the

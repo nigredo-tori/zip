@@ -7,12 +7,13 @@ test "can compile zipfiles":
     path).exitCode == QuitSuccess
 
 test "zipfiles extractAll":
-  var filename = "files/тест.xlsx"
+  var filename = "files" / "тест.xlsx"
+  assert filename.existsFile
   var z: ZipArchive
   if not z.open(filename):
     echo "Opening zip failed"
     quit(1)
-  z.extractAll("files/td")
+  z.extractAll("files" / "td")
   z.close()
   check existsDir("files/td/xl/worksheets")
   check existsFile("files/td/xl/worksheets/sheet1.xml")
@@ -20,6 +21,7 @@ test "zipfiles extractAll":
 test "zipfiles read and write using Stream":
   let filename = getTempDir() / "zipfiles_test_archive.zip"
   defer: filename.removeFile
+  assert: not filename.existsFile
 
   var z: ZipArchive
   require z.open(filename, fmWrite)
